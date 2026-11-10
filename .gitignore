@@ -1,0 +1,84 @@
+# PlatformIO / ESP32 / native build
+.pio/
+.pioenvs/
+.piolibdeps/
+build/
+dist/
+out/
+managed_components/
+sdkconfig.old
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.a
+
+# Python environments and tooling
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# SQLite runtime, including journals
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Web tooling (framework not selected)
+node_modules/
+.next/
+.nuxt/
+coverage/
+*.tsbuildinfo
+
+# Local credentials / device provisioning / personal data
+.env
+.env.*
+!.env.example
+!**/.env.example
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+wifi.local.*
+platformio.local.ini
+*.local.json
+*.log
+logs/
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Do not ignore reviewed BOMs, diagrams, dependency lockfiles,
+# sdkconfig.defaults, source, report PDFs or sanitized test evidence.
+
+# Local Codex audit / handoff reports (keep locally, do not publish)
+/SETUP_REPORT.md
+/M0_REVISION_REPORT.md
+/docs/M0_STATUS.md
+/M1_PROGRESS.md
+
+# Course notice: public redistribution has not been authorized
+/docs/ThongBao_BaiTapLon_IoT.docx
