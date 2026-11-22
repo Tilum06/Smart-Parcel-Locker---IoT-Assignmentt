@@ -205,3 +205,30 @@ def test_frontend_assets_are_local_and_absent_from_production(demo, tmp_path):
         assert production.get('/').status_code == 404
         assert production.get('/assets/app.js').status_code == 404
         assert production.post('/demo/reset').status_code == 404
+
+
+def test_restart_retains_reservation_and_requires_manual_reconnect(demo):
+    client, sim = demo
+    item, _ = allocate_demo(client)
+    with TestClient(create_demo_app(sim.path.parent), base_url='http://127.0.0.1', client=('127.0.0.1', 50001)) as restarted:
+        state = restarted.get('/demo/state').json()
+        locker = next(l for l in state['lockers'] if l['id'] == item['locker_id'])
+        assert locker['online'] == 0 and locker['state'] == 'RESERVED'
+        assert state['transactions'][0]['active'] == 1
+        assert state['commands'][0]['status'] == 'PENDING'
+        assert event(restarted, item, 'UNLOCK_APPLIED').status_code == 409
+
+
+def test_stale_closed_requires_another_manual_snapshot(demo):
+    client, sim = demo
+    item, token = allocate_demo(client)
+    cycle(client, item)
+    client.post(f"/api/v1/deposits/{item['parcel_id']}/confirm", headers={**token, 'X-Request-ID': str(uuid4())}).raise_for_status()
+    with sim.db.write() as conn:
+        conn.execute('UPDATE transactions SET closed_at=?', (time.time() - 11,))
+    state = event(client, item, 'LOCK_APPLIED').json()
+    assert state['parcels'][0]['status'] == 'DEPOSITING'
+    assert state['lockers'][0]['state'] == 'DEPOSITING'
+    assert client.get('/demo/state').json()['transactions'][0]['active'] == 1
+    state = event(client, item, 'SENSOR', door='CLOSED').json()
+    assert state['parcels'][0]['status'] == 'STORED'
