@@ -1,9 +1,5 @@
-# Kiểm thử và evidence — revision 1.3
+# Kiểm thử — v2.0
 
-Chỉ có [TEST_PLAN](../docs/TEST_PLAN.md), chưa có executable hoặc evidence chức năng. Giữ TC-01…29 và tiểu mục, thêm TC-30…35 cho latch/LOCK guard, kiosk code, hai thứ tự confirmation/cửa, combined Central, expired command và adapter/worker.
+Theo [TEST_PLAN](../docs/TEST_PLAN.md). Phạm vi đúng là 2 ESP32-S3, 2 MG90S, 2 MC-38, hai locker S/M; không dùng test lịch sử relay/12V để tuyên bố PASS servo. M1 thử một ngăn cơ khí và nguồn; M2 test ESP-NOW/Serial; M3 một đơn gửi→nhận; M4 cả hai ngăn/best-fit; M5 CoreIOT; M6 evidence và báo cáo.
 
-M1: bench một ngăn/jig trong HW-01, subset protocol v1 và dữ liệu giả. M2: foundations + parser/allocator/auth/worker và recovery tối thiểu, không chờ BE-03 full M4. M3: một ngăn gửi–nhận E2E có mã kiosk và door cycle/LOCK/latch thật. Kế hoạch hay mock không thay test HIL/điểm công nghệ.
-
-Evidence ghi ngày/TC/FR/Issue/commit/build/contract revision, setup/initial state, steps/expected/actual, request/transaction/boot/sequence/epoch, PASS/FAIL/BLOCKED/NOT RUN và reviewer. Khử phone/phòng/pickup_code/password/token, không commit DB/log runtime; `.log` bị ignore, dùng report Markdown/CSV đã review hoặc artifact sạch.
-
-TC-33 kiểm cùng build kiosk+ESP-NOW+Serial+webserver+OTA; TC-31 code sai/expired/used/khác phiên/attempt limit; TC-32 confirmation trước hoặc sau đóng cửa; TC-30 door/latch độc lập và không LOCK khi OPEN/UNKNOWN. M0 consistency chỉ là QA tài liệu, không tạo PASS giả cho các test chưa hiện thực. DOC-01 tự đánh giá phải nêu đúng kế hoạch/code/test/evidence và phần dùng AI.
+Log ảnh/video phải nêu đúng cấu hình và che dữ liệu cá nhân/token. MC-38 chỉ chứng minh cửa đóng, không xác minh chốt đã gài; báo cáo giới hạn này rõ ràng.
