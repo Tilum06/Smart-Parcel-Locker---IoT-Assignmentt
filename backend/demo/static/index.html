@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Parcel Lab · Development Simulator</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#overview">Bỏ qua điều hướng</a>
+  <aside class="sidebar">
+    <a class="brand" href="#overview"><span class="brand-icon">▣</span><span>Parcel Lab<small>SMART LOCKER SIMULATOR</small></span></a>
+    <div class="side-label">KHÔNG GIAN DEMO</div>
+    <nav aria-label="Điều hướng chính">
+      <a href="#overview" class="nav-link active"><span>◫</span>Tổng quan</a>
+      <a href="#workflows" class="nav-link"><span>⇄</span>Gửi &amp; nhận hàng</a>
+      <a href="#parcels" class="nav-link"><span>▱</span>Đơn hàng</a>
+      <a href="#history" class="nav-link"><span>◷</span>Lịch sử hoạt động</a>
+      <a href="#database" class="nav-link"><span>▤</span>Dữ liệu SQLite</a>
+    </nav>
+    <div class="side-bottom"><span class="dev-dot"></span><strong>Development only</strong><p>Dữ liệu giả. Phần cứng mô phỏng.<br>Chỉ hoạt động trên localhost.</p><div class="version">2 ESP32-S3 · 2 locker · v1.0</div></div>
+  </aside>
+  <main>
+    <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span>Simulator</div><div class="top-right"><span class="dev-tag">DEV ENVIRONMENT</span><span id="sync-label">Đang kết nối…</span></div></header>
+    <div class="content">
+      <section id="overview" class="intro"><div><div class="eyebrow">SMART PARCEL LOCKER</div><h1>Mỗi bước, một trạng thái.</h1><p>Điều khiển từng thao tác. Quan sát toàn bộ phiên gửi và nhận hàng.</p></div><button id="reset-open" class="button ghost danger" type="button">↺ Reset demo</button></section>
+      <div id="connection-error" class="notice error" hidden role="alert"></div>
+      <section class="metrics" aria-label="Tổng quan">
+        <article class="metric"><div>Ngăn sẵn sàng <span class="metric-icon mint">▣</span></div><strong id="metric-available">0<span>/ 2</span></strong><small>AVAILABLE &amp; online</small></article>
+        <article class="metric"><div>Đơn đang lưu <span class="metric-icon blue">▱</span></div><strong id="metric-stored">0</strong><small>Đã hoàn tất gửi hàng</small></article>
+        <article class="metric"><div>Phiên đang chờ <span class="metric-icon amber">◷</span></div><strong id="metric-pending">0</strong><small>Chờ thao tác hoặc bằng chứng</small></article>
+        <article class="metric"><div>Đơn đã nhận <span class="metric-icon violet">✓</span></div><strong id="metric-completed">0</strong><small>Chu trình nhận hoàn tất</small></article>
+      </section>
+      <section class="section" aria-labelledby="lockers-heading">
+        <div class="section-heading"><div><h2 id="lockers-heading">Trạm mô phỏng</h2><p>Central #1 · Locker Node #2 điều khiển cả hai ngăn</p></div><div class="node-control"><span id="node-status" class="pill neutral">NODE OFFLINE</span><button id="node-toggle" class="button primary" type="button">Kết nối Node</button></div></div>
+        <div id="lockers" class="locker-grid" aria-live="polite"></div>
+        <div class="hardware-note"><span>ⓘ</span><p>Mọi tín hiệu đều do bạn bấm. <strong>LOCK_APPLIED</strong> xác nhận điều khiển servo, không xác minh chốt đã gài cơ khí. Không sử dụng cảm biến chốt.</p></div>
+      </section>
+      <section id="workflows" class="workflow-grid">
+        <article class="panel"><div class="panel-heading"><div class="panel-icon mint">▱</div><div><h2>Gửi hàng</h2><p>Kiosk / Shipper</p></div><span class="pill good" id="kiosk-auth">Đang đăng nhập…</span></div>
+          <p class="flow-caption">Nhập thông tin → đặt ngăn → UNLOCK → OPEN → CLOSED → xác nhận → LOCK</p>
+          <form id="deposit-form"><div class="field-row"><label>Mã phòng<input name="room_code" value="001" inputmode="numeric" pattern="[0-9]+" required maxlength="20"></label><label>Kích thước kiện<select name="parcel_size"><option value="S">S — Nhỏ</option><option value="M">M — Vừa</option></select></label></div><label>Số điện thoại người nhận<input name="recipient_phone" value="0000000001" inputmode="tel" required pattern="\+?[0-9]{8,15}"></label><button class="button primary full" type="submit">Đặt ngăn gửi hàng</button></form>
+          <div class="divider"></div><label>Đơn cần xác nhận<select id="deposit-select"><option value="">Chưa có phiên gửi</option></select></label><button id="deposit-confirm" class="button secondary full" type="button" disabled>Xác nhận đã gửi hàng</button>
+          <small class="helper">Best-fit do backend quyết định: S ưu tiên L01, có thể dùng L02; M chỉ dùng L02.</small>
+        </article>
+        <article class="panel"><div class="panel-heading"><div class="panel-icon blue">♙</div><div><h2>Nhận hàng</h2><p>Resident / Kiosk</p></div><span id="resident-auth" class="pill neutral">Chưa đăng nhập</span></div>
+          <form id="login-form"><div class="field-row"><label>Tài khoản cư dân<input name="username" id="resident-username" value="resident-001" autocomplete="off" required></label><label>Mật khẩu<input name="password" id="resident-password" type="password" autocomplete="off" required></label></div><button class="button secondary full" type="submit">Đăng nhập cư dân</button></form>
+          <details class="demo-accounts"><summary>Tài khoản demo được tạo sẵn</summary><div id="demo-accounts"></div></details>
+          <div class="divider"></div><label>Đơn của cư dân<select id="pickup-select" disabled><option value="">Đăng nhập để xem đơn của bạn</option></select></label>
+          <div class="kiosk-line"><button id="kiosk-code" class="button ghost" type="button" disabled>Lấy mã kiosk</button><span id="kiosk-countdown">Mã một lần · TTL 30 giây</span></div>
+          <form id="pickup-form"><label>Mã kiosk<input name="code" id="pickup-code" placeholder="Lấy mã rồi xác thực trong 30 giây" autocomplete="off" required></label><div class="field-row"><button id="pickup-request" class="button primary" type="submit" disabled>Xác thực nhận hàng</button><button id="pickup-confirm" class="button secondary" type="button" disabled>Xác nhận đã lấy hàng</button></div></form>
+          <small class="helper">Đăng nhập đúng chủ đơn. Sau xác thực, thực hiện từng bước ở trạm mô phỏng rồi xác nhận và LOCK.</small>
+        </article>
+      </section>
+      <section id="parcels" class="panel section"><div class="section-heading"><div><h2>Đơn hàng</h2><p>Trạng thái được đọc trực tiếp từ backend</p></div><span id="parcel-count" class="count">0 đơn</span></div><div class="table-scroll"><table><thead><tr><th>Đơn hàng</th><th>Người nhận</th><th>Kích thước</th><th>Locker</th><th>Trạng thái</th><th>Tạo lúc</th></tr></thead><tbody id="parcel-rows"></tbody></table></div></section>
+      <section id="history" class="panel section"><div class="section-heading"><div><h2>Lịch sử hoạt động</h2><p>Theo dõi sự kiện và các phiên giao dịch</p></div><label class="filter-label"><span class="sr-only">Lọc lịch sử theo đơn</span><select id="history-filter"><option value="">Tất cả đơn hàng</option></select></label></div>
+        <div class="tabs" role="tablist" aria-label="Loại lịch sử"><button id="events-tab" role="tab" aria-controls="events-panel" aria-selected="true" type="button">Sự kiện <span id="event-count">0</span></button><button id="transactions-tab" role="tab" aria-controls="transactions-panel" aria-selected="false" type="button">Giao dịch</button></div>
+        <div id="events-panel" role="tabpanel" aria-labelledby="events-tab"><div id="event-list" class="event-list"></div></div>
+        <div id="transactions-panel" role="tabpanel" aria-labelledby="transactions-tab" hidden><div class="table-scroll"><table><thead><tr><th>Phiên</th><th>Đơn / Ngăn</th><th>Loại</th><th>Trạng thái</th><th>Xác nhận</th><th>OPEN / CLOSED / LOCK</th></tr></thead><tbody id="transaction-rows"></tbody></table></div></div>
+      </section>
+      <section id="database" class="panel section"><details id="database-details"><summary class="database-summary"><span><strong>SQLite Inspector</strong><small>Snapshot nhất quán từ simulator.sqlite3 · chỉ đọc</small></span><span class="pill neutral">DEMO DATABASE</span></summary><div class="database-body"><label>Bảng dữ liệu<select id="database-table"><option>lockers</option><option>parcels</option><option>transactions</option><option>commands</option><option>event_logs</option><option>kiosk_sessions</option><option>demo_hardware</option></select></label><pre id="database-json"></pre></div></details></section>
+      <footer><span>Parcel Lab <span class="footer-dot">·</span> Development Demo Simulator</span><span>Không firmware · Không CoreIOT · Không tự phát tín hiệu</span></footer>
+    </div>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="reset-dialog"><h2>Reset dữ liệu demo?</h2><p>Xóa đơn và lịch sử trong database demo. Hai ngăn về AVAILABLE và offline. Token đăng nhập bị thu hồi; database production không bị thay đổi.</p><div class="dialog-actions"><button id="reset-cancel" class="button ghost" type="button">Hủy</button><button id="reset-confirm" class="button destructive" type="button">Reset dữ liệu demo</button></div></dialog>
+</body>
+</html>

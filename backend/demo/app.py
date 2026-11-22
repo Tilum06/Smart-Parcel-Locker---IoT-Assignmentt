@@ -6,7 +6,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from backend.main import create_app
 from .simulator import ConnectionInput, EventInput, Simulator
 
@@ -46,7 +47,7 @@ def create_demo_app(directory: Path | None = None):
             response = await call_next(request)
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
         return response
 
     @app.get('/demo/bootstrap')
@@ -71,5 +72,12 @@ def create_demo_app(directory: Path | None = None):
     def reset() -> dict:
         simulator.reset()
         return simulator.snapshot()
+
+    static = Path(__file__).resolve().parent / 'static'
+    app.mount('/assets', StaticFiles(directory=static), name='demo-assets')
+
+    @app.get('/', include_in_schema=False)
+    def index():
+        return FileResponse(static / 'index.html')
 
     return app

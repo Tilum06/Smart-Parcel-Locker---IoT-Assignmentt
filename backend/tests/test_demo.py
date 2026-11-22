@@ -189,3 +189,19 @@ def test_kiosk_ttl_and_other_resident_authorization_are_reused(demo):
     with sim.db.write() as conn:
         conn.execute('UPDATE kiosk_sessions SET expires_at=?', (time.time()-1,))
     assert client.post(url, headers=alice, json=payload).status_code == 403
+
+
+def test_frontend_assets_are_local_and_absent_from_production(demo, tmp_path):
+    client, _ = demo
+    page = client.get('/')
+    assert page.status_code == 200
+    assert '<html lang="vi">' in page.text
+    assert '/assets/app.js' in page.text and '/assets/app.css' in page.text
+    assert "frame-ancestors 'none'" in page.headers['content-security-policy']
+    assert page.headers['cache-control'] == 'no-store'
+    for asset in ('app.js', 'app.css'):
+        assert client.get('/assets/' + asset).status_code == 200
+    with TestClient(create_app(Database(str(tmp_path / 'prod.sqlite3')))) as production:
+        assert production.get('/').status_code == 404
+        assert production.get('/assets/app.js').status_code == 404
+        assert production.post('/demo/reset').status_code == 404
