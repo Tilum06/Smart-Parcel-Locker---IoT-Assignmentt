@@ -82,3 +82,6 @@ Desktop.ini
 
 # Course notice: public redistribution has not been authorized
 /docs/ThongBao_BaiTapLon_IoT.docx
+# Git sync review: local editor settings and Office lock files
+.vscode/
+~$*
