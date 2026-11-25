@@ -160,3 +160,7 @@ debounce cảm biến, ACK/retry radio/Serial, clock đồng bộ ESP32 hay giao
 Không HIL, firmware, CoreIOT, notification hoặc Web App production. Sau EXCEPTION cần
 reset dữ liệu demo; chưa có quy trình reconcile thủ công cho vận hành thật. Bảng sự kiện UI
 hiển thị tối đa 120 sự kiện mới nhất; Inspector vẫn đọc toàn bộ snapshot. Không nhập PII thật.
+
+## Phân biệt với MVP v2.1 (25/11/2026)
+
+Các hướng dẫn/kết quả ở trên mô tả simulator **Implemented theo flow Phase 1 cũ**: kiosk cấp opaque code, cư dân xác thực qua API. Chúng không phải luồng mục tiêu v2.1 (Mobile App yêu cầu PIN 6 số/30 giây, nhập tại keypad kiosk để Backend xác thực). Source và các kết quả kiểm thử simulator được giữ nguyên; chưa có API PIN mới hoặc HIL v2.1. Xem [interfaces hiện hành](../../docs/INTERFACES.md) trước tích hợp.

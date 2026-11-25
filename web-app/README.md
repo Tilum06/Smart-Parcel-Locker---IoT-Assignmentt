@@ -1,3 +1,7 @@
-# Web App cư dân/admin — v2.0
+# Web App — trạng thái trong MVP v2.1
 
-Admin tạo tài khoản cư dân gắn phòng số và SĐT. Cư dân đăng nhập, xem đơn/thông báo của mình, xác nhận nhận hàng và nhập mã phiên **30 giây** từ kiosk. Backend kiểm ownership, đúng đơn/kiosk/phiên, one-use và giới hạn thử. Kiosk/Backend kiểm chứng hành vi gửi→nhận trên hai locker **L01=S, L02=M**. Không báo chốt vật lý đã khóa nếu chỉ có servo result và MC-38 door CLOSED; không có cảm biến latch trong MVP. APK Android riêng là mở rộng sau.
+Thư mục hiện chỉ có tài liệu, **chưa có Web App production**. Client nhận hàng mục tiêu là [Resident Mobile App](../mobile/README.md): App login/chọn kiện/yêu cầu PIN 6 chữ số/30 giây, nhập PIN tại keypad kiosk và Backend xác thực. Không tiếp tục mô tả kiosk hiển thị mã để người nhận nhập Web App như luồng mục tiêu.
+
+[Simulator development](../backend/demo/README.md) có giao diện web localhost dùng **API Phase 1 cũ** (kiosk tạo opaque code, cư dân xác thực qua API). Giữ để thử nghiệp vụ, không coi là Mobile App/Web App production v2.1. Giao diện admin/cư dân web chưa được triển khai trong lần này.
+
+Backend vẫn quản lý auth/ownership/allocation và evidence trên L01=S/L02=M. MC-38 đo cửa; LOCK_APPLIED không chứng minh gài chốt. [Kiến trúc](../docs/ARCHITECTURE.md), [API thực tế và phần Planned](../docs/INTERFACES.md).

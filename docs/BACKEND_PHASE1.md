@@ -201,3 +201,19 @@ SQLite integrity_check=ok, đúng L01=S/L02=M và cả hai offline. Không có m
 Chưa triển khai: Serial/ESP-NOW/MQTT, heartbeat/reconcile thật, firmware, Web App,
 notification, CoreIOT, reset mật khẩu, rate limiting login ở lớp triển khai, migration từ schema
 không có user_version do bên khác tự tạo, và quy trình vận hành xử lý EXCEPTION thủ công.
+
+## Đối chiếu thiết kế mục tiêu MVP v2.1 — 25/11/2026
+
+Phần Phase 1 ở trên giữ mô tả implementation/API hiện có và kết quả kiểm thử tại thời điểm ghi nhận. Những câu chưa triển khai firmware/Web App/CoreIoT là phạm vi Phase 1; workspace gốc còn có firmware thử nghiệm và Expo starter; branch này chỉ kế thừa helper MQTT, không mang theo các source local/branch Mobile, chưa phải tích hợp v2.1. Policy mật khẩu trên branch này vẫn 12–128 ký tự, đúng source kế thừa; thay đổi local 8–128 ký tự ở workspace gốc không được đưa vào commit này.
+
+| Nội dung | Implemented Phase 1 | Planned v2.1 |
+|---|---|---|
+| Nơi cấp mã | KIOSK/ADMIN tạo kiosk-session | RESIDENT chủ kiện yêu cầu từ Mobile App |
+| Mã | Opaque secrets.token_urlsafe(16), không phải PIN ngắn | Chuỗi 6 chữ số giữ 0 đầu, CSPRNG; không trùng phiên active cùng scope |
+| Nơi nhập/xác thực | RESIDENT gửi session_id + code qua API pickup | Nhập keypad, Central chuyển Serial, Backend kiểm owner/parcel/expiry/kiosk scope |
+| TTL và thử sai | 30 giây, one-use, tối đa 5 lần sai theo phiên | 30 giây, one-use; giới hạn sai/rate limit kiosk cần thiết kế, chưa có source |
+| Xác nhận lấy | Endpoint confirm thuộc RESIDENT | Contract xác nhận kiosk gắn đúng giao dịch/quyền cần cập nhật |
+
+Giữ kiến trúc FastAPI + SQLite + Gateway trong cùng ứng dụng Python. Công việc tiếp theo: API/schema/migration cần thiết cho cấp/verify/confirm PIN, collision handling, verifier bảo vệ PIN ngắn, atomic consume + tạo PICKUP + UNLOCK intent, idempotency và giới hạn thử. Không log/lưu plaintext mã lâu dài, không mở khi Backend không phản hồi, không TOTP offline. Chưa đặt tên endpoint mới hoặc tuyên bố chúng đã triển khai.
+
+Cần adapter Serial/ESP-NOW/MQTT thật, heartbeat/reconcile, mapping COMMAND_RESULT/DOOR_EVENT/STATUS sang DeviceEvent; không coi timeout 10 giây của evidence là timeout transport đã chốt. Các điều kiện confirmation/cycle/CLOSED mới/LOCK_APPLIED và giới hạn không chứng minh chốt gài vẫn giữ nguyên. [Interfaces v2.1](INTERFACES.md), [đặc tả mục tiêu](PROJECT_SPEC.md), [pinout baseline](../hardware/PINOUT.md).

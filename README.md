@@ -1,37 +1,49 @@
-## Backend Phase 1 đã triển khai
+# Smart Parcel Locker — MVP v2.1
 
-FastAPI + SQLite: [hướng dẫn Windows, schema, API và kiểm thử](docs/BACKEND_PHASE1.md). Cấu hình Phase 1 hiện hành là **2 ESP32-S3**, **L01=S, L02=M**, servo 5V + MC-38, không latch sensor. Best-fit S→S/M, M→M; không size L. Hoàn tất cần confirmation, chu kỳ cửa đúng phiên, CLOSED mới hợp lệ và LOCK_APPLIED đúng command, không có lỗi/offline/unknown. LOCK_APPLIED chỉ chứng minh servo đã được điều khiển, không chứng minh chốt gài cơ khí. Đây là cấu hình ưu tiên hơn các mô tả baseline cũ bên dưới; tài liệu v1.2 giữ nguyên.
+> **Phạm vi branch:** feat/embedded kế thừa origin/feat/demo-simulator tại fa1c26b. Các nhận xét về Expo starter và firmware test bên dưới được quan sát ở workspace gốc feat/resident-mobile-app (firmware test còn untracked); các source đó không được đưa vào branch tài liệu này.
 
----
-
-# Smart Parcel Locker — MVP v2.0
-
-**Cập nhật 23/11/2026.** Nhóm 2 người; **2 ESP32-S3 Yolo UNO, 2 ngăn L01=S và L02=M**, khóa bằng **2 servo MG90S 5V + chốt cơ khí**, đọc trạng thái cửa bằng **2 MC-38 NC**. Không dùng relay, khóa 12V, hay microswitch xác nhận chốt trong MVP.
-
-## Kiến trúc
+Baseline thiết kế ngày **25/11/2026**, nhóm hai thành viên: **hai Yolo UNO ESP32-S3**, hai ngăn **L01=S, L02=M**. Mỗi ngăn có **MG90S 5V 180° + chốt cơ khí** và **MC-38 NC**.
 
 ```text
-PC: FastAPI + SQLite + Gateway Serial/MQTT ── CoreIOT
-                | USB Serial JSON Lines
-ESP32-S3 #1: Central/Kiosk (ST7789 240×240, LVGL, keypad 4×4)
-                | ESP-NOW
-ESP32-S3 #2: Locker Node
-         ├── L01 (S): servo MG90S + MC-38
-         └── L02 (M): servo MG90S + MC-38
+Resident Mobile App ── REST API ── PC: FastAPI + SQLite + Gateway
+                                          ├── MQTT ── CoreIoT
+                                          └── USB Serial
+                                               Central (Node 1)
+                                               ├── ST7789 SPI 240×240 / LVGL
+                                               ├── Keypad 4×4
+                                               └── ESP-NOW ── Locker Node (Node 2)
+                                                               ├── L01 S: MG90S + MC-38
+                                                               └── L02 M: MG90S + MC-38
 ```
 
-Backend và Gateway là module trong **cùng một ứng dụng Python**, không tách thành hai HTTP server. Firmware PlatformIO/C++ Arduino. Web App dành cho admin/cư dân; CoreIOT để giám sát.
+Backend/Gateway là các module trong **cùng một ứng dụng Python**. Backend quyết định authentication, authorization, cấp ngăn và giao dịch. Central nhập liệu, hiển thị và chuyển tiếp; Locker Node điều khiển servo, đọc cửa. CoreIoT giám sát, telemetry, thống kê, cảnh báo. Hai ESP32 không bắt buộc kết nối Internet trực tiếp.
 
-## Luồng chính
+## Luồng mục tiêu
 
-Shipper nhập mã phòng số, số điện thoại cư dân, kích thước S/M trên kiosk. Backend kiểm tra cư dân có sẵn và chọn ngăn best-fit: **S→S hoặc M; M→M**. Sau khi reservation/lệnh được lưu, Backend gửi UNLOCK qua USB Serial → Central → ESP-NOW → Locker Node. Shipper đặt hàng, đóng cửa, xác nhận. Servo khóa lại khi cửa đã đóng; MC-38 chỉ đo trạng thái cửa, không đo kiện hay chứng minh chốt đã gài.
+- **Gửi:** shipper nhập mã phòng, SĐT người nhận, size S/M tại kiosk → Backend xác minh cư dân, reserve atomic và lưu UNLOCK intent → Central → Node → đặt hàng, đóng cửa, xác nhận → Backend yêu cầu LOCK khi đủ điều kiện → hoàn tất khi đủ evidence. S ưu tiên L01, có thể nâng lên L02; M chỉ L02. Không cấp ngăn offline/lỗi/đang dùng/không rõ trạng thái.
+- **Nhận:** cư dân đăng nhập Mobile App, chọn kiện của mình và yêu cầu mã → Backend cấp **chuỗi 6 chữ số, TTL 30 giây, một lần dùng** → App hiển thị mã/countdown → nhập tại keypad kiosk → Backend kiểm mã, chủ đơn, hạn và phạm vi kiosk; tiêu thụ mã atomic với tạo giao dịch và UNLOCK intent → lấy hàng, đóng cửa, xác nhận → hoàn tất và giải phóng ngăn khi đủ evidence. Backend không phản hồi thì không mở.
 
-Người nhận đăng nhập Web App, xác thực quyền sở hữu và **mã phiên 30 giây hiển thị ở kiosk**, nhận hàng, đóng cửa, xác nhận. Backend quản lý vòng đời giao dịch; lỗi hoặc trạng thái không xác định không được tự giải phóng ngăn.
+Evidence cần confirmation + chu kỳ OPEN→CLOSED đúng phiên + CLOSED còn mới + LOCK_APPLIED đúng command, không lỗi/offline/unknown. ACK chỉ xác nhận nhận lệnh; LOCK_APPLIED không chứng minh chốt cơ khí đã gài. Không có cảm biến hiện diện kiện hàng hoặc vị trí chốt.
 
-## Phạm vi
+## Trạng thái thực tế
 
-MVP: 2 servo/chốt, 2 MC-38, 2 ESP32-S3, ST7789/LVGL, keypad, ESP-NOW, FastAPI/SQLite, Web App, Gateway PC, CoreIOT. **Để sau:** bốn ngăn, size L, microswitch chốt, buzzer, OTA, webserver trên ESP32, APK và các mở rộng khác. Các lần test khóa 12V/relay trước đây không phải bằng chứng đã test servo.
+| Nhãn | Ý nghĩa và hiện trạng |
+|---|---|
+| Implemented | Có source FastAPI/SQLite Phase 1, simulator cục bộ, helper MQTT, firmware thử nghiệm và Expo starter |
+| Planned | Luồng Mobile App cấp PIN → kiosk nhập; firmware v2.1 ST7789/LVGL/keypad/servo và Gateway Serial/MQTT tích hợp |
+| Verified | Chỉ dùng khi có evidence theo cấu hình cụ thể; kết quả cũ trong báo cáo không phải nghiệm thu v2.1 |
+| Backlog | Size L, thêm node/ngăn, khóa 12V/relay, cảm biến chốt/kiện hàng, OTA, ESP32 webserver; ngoài MVP |
 
-Xem [PROJECT_SPEC](docs/PROJECT_SPEC.md), [ARCHITECTURE](docs/ARCHITECTURE.md), [INTERFACES](docs/INTERFACES.md), [DECISIONS](docs/DECISIONS.md), [ROADMAP](docs/ROADMAP.md), [TEST_PLAN](docs/TEST_PLAN.md).
+**Phase 1 vẫn dùng luồng cũ:** kiosk tạo opaque code, cư dân gửi code qua API nhận hàng. Chưa có API PIN 6 số hoặc Mobile App nghiệp vụ. Central thử nghiệm còn `board=esp32dev`; Test 8B/8C dùng relay/12V. Giữ các thí nghiệm để tham khảo, không coi là implementation v2.1.
 
-**Lưu ý:** các file là kế hoạch kỹ thuật, không tuyên bố đã có mã chạy hay test PASS nếu chưa có minh chứng. File đặc tả v1.2 ở root giữ làm lịch sử, không sửa.
+## Tài liệu và chạy thử
+
+- [Đặc tả](docs/PROJECT_SPEC.md), [kiến trúc](docs/ARCHITECTURE.md), [quyết định](docs/DECISIONS.md), [interfaces](docs/INTERFACES.md).
+- [Pinout chính thức của dự án](hardware/PINOUT.md), [BOM](hardware/README.md), [roadmap/phân công](docs/ROADMAP.md), [backlog](docs/ISSUES.md), [Git workflow](docs/GIT_WORKFLOW.md).
+- [Backend Phase 1: setup Windows, API, tests](docs/BACKEND_PHASE1.md), [simulator cục bộ](backend/demo/README.md), [test plan](docs/TEST_PLAN.md).
+
+Pinout đã đối chiếu nguồn OhStem nhưng **chưa xác nhận bằng kiểm thử trên hai board thực tế**. Chỉ PINOUT.md chứa bảng đấu chân; README module dẫn chiếu tới đó.
+
+## Tài liệu lịch sử
+
+Giữ nguyên [đặc tả v1.2](PROJECT_SPEC_Smart_Parcel_Locker_v1.2.md), [Git sync review 23/11](docs/GIT_SYNC_REVIEW_2026-11-23.md) và các báo cáo/test cũ ở workspace gốc (SETUP_REPORT.md, M0_REVISION_REPORT.md, docs/M0_STATUS.md, TEST8A/B/C; không có trong tree kế thừa). Cấu hình/kết quả trong đó là ảnh chụp lịch sử, không thay thế baseline v2.1. [Tổng kết cập nhật](docs/DOCUMENTATION_V2_1_REVIEW.md).

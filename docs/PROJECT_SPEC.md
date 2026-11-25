@@ -1,40 +1,62 @@
-## Bổ sung triển khai Phase 1 (hiện hành)
+# Đặc tả — Smart Parcel Locker MVP v2.1
 
-Cấu hình ưu tiên: 2 ESP32-S3 (Central 1, Locker Node 2), 2 locker L01=S/L02=M, servo 5V + MC-38, không cảm biến chốt, không size L. FastAPI + SQLite đã có source Phase 1; [schema, API, setup và giới hạn](BACKEND_PHASE1.md). Hoàn tất gửi/nhận cần confirmation + OPEN→CLOSED đúng phiên + CLOSED mới hợp lệ + LOCK_APPLIED đúng command, không lỗi/offline/unknown. Không cần ENGAGED; LOCK_APPLIED chỉ là kết quả điều khiển servo, không xác minh chốt cơ khí. Nội dung Phase 1 này thay các mô tả cấu hình baseline cũ; v1.2 giữ lịch sử.
+> **Phạm vi branch:** feat/embedded kế thừa origin/feat/demo-simulator tại fa1c26b. Các nhận xét về Expo starter và firmware test bên dưới được quan sát ở workspace gốc feat/resident-mobile-app (firmware test còn untracked); các source đó không được đưa vào branch tài liệu này.
 
----
+**Planned baseline, 25/11/2026.** Tài liệu mô tả mục tiêu; API đã có xem [Backend Phase 1](BACKEND_PHASE1.md). Implemented = có source; Planned = chưa tích hợp; Verified = có evidence theo cấu hình; Backlog = ngoài MVP.
 
-# Đặc tả hiện hành — Smart Parcel Locker v2.0
+## Cấu hình chính thức
 
-## Cấu hình chốt
-
-| Thành phần | MVP |
+| Thành phần | MVP v2.1 |
 |---|---|
-| Central | 1 Yolo UNO ESP32-S3, ST7789 240×240 SPI/LVGL, keypad 4×4 |
-| Locker Node | 1 Yolo UNO ESP32-S3, điều khiển cả hai ngăn qua ESP-NOW |
-| Locker | L01=S, L02=M; kích thước cm chưa chốt |
-| Khóa/cửa | 2 MG90S 180° + chốt cơ khí, 2 MC-38 NC |
-| Nguồn servo | Nguồn 5V ngoài, GND chung ESP32; phải test dòng khi kéo/kẹt |
-| PC | Python FastAPI + SQLite, Gateway Serial/MQTT cùng ứng dụng |
-| Xác thực cư dân | Admin tạo tài khoản gắn mã phòng số và số điện thoại |
-| Nhận hàng | Login Web App + đúng chủ đơn + mã phiên 30 giây tại kiosk |
+| Central, Node ID 1 | Yolo UNO ESP32-S3; ST7789 SPI 240×240, LVGL, keypad ma trận 4×4; ESP-NOW và USB Serial |
+| Locker Node, Node ID 2 | Yolo UNO ESP32-S3, quản lý đồng thời cả hai ngăn |
+| L01 / L02 | L01 size S; L02 size M; kích thước cơ khí cm chưa đo/chốt |
+| Mỗi ngăn | MG90S 5V 180° + chốt cơ khí; MC-38 NC đọc cửa |
+| PC | FastAPI + SQLite + Gateway Serial/MQTT cùng ứng dụng Python |
+| Client | Resident Mobile App qua REST API; Web App production chưa triển khai |
+| CoreIoT | Giám sát, telemetry, thống kê, cảnh báo qua Gateway PC |
 
-Không dùng khóa 12V/relay, cảm biến hiện diện hàng hay microswitch chốt trong MVP. Chỉ có phản hồi cửa; servo LOCK_APPLIED không chứng minh chốt gài vật lý.
+Không dùng khóa điện 12V, relay, cảm biến kiện hàng, microswitch vị trí chốt, size L hoặc board thứ ba trong MVP. Những thiết bị/thí nghiệm cũ được giữ nguyên; chỉ xem xét mở rộng ở phiên bản sau.
 
-## Chức năng bắt buộc cho MVP
+Backend quản lý authentication, authorization, cấp ngăn, dữ liệu và giao dịch. Admin tạo tài khoản cư dân gắn mã phòng và SĐT; input shipper không tự tạo cư dân. Mã phòng là chuỗi số giữ số 0 đầu. Central chỉ thu input, hiển thị kiosk, chuyển request/command/event; không điều khiển servo trực tiếp, không tự cấp ngăn hoặc xác thực quyền nhận hàng. Node thực thi lệnh và báo cửa/kết quả servo. Gateway chỉ làm transport; CoreIoT không thay SQLite làm nguồn sự thật nghiệp vụ.
 
-1. Kiosk nhập mã phòng, SĐT, size S/M; đối chiếu cư dân được admin tạo sẵn.
-2. Backend best-fit: **S ưu tiên L01**, nếu bận được nâng lên L02; **M chỉ L02**; cấp ngăn atomic và loại offline/lỗi/đang dùng.
-3. Backend lưu command intent/request ID trước khi gửi UNLOCK; Central chuyển tới Locker Node qua ESP-NOW.
-4. Shipper đặt kiện và xác nhận thủ công, cửa phải có chu kỳ OPEN→CLOSED hợp lệ; Node chỉ LOCK khi cửa CLOSED.
-5. Web App hiển thị thông báo cho đúng người nhận. Người nhận login, nhập mã phiên kiosk hạn 30 giây, một lần dùng, giới hạn thử và gắn đúng phiên/đơn/kiosk.
-6. Người nhận lấy hàng, đóng cửa, xác nhận; Backend hoàn tất khi đủ điều kiện nghiệp vụ và kết quả servo hợp lệ, không tự kết luận vị trí chốt.
-7. Gateway PC đẩy telemetry/notification phù hợp sang CoreIOT, không tiết lộ SĐT/mã phòng/mã phiên/token.
+## Gửi hàng
 
-## Nguyên tắc vận hành
+1. Shipper chọn gửi hàng trên kiosk.
+2. Nhập mã phòng.
+3. Nhập SĐT người nhận.
+4. Chọn size S hoặc M.
+5. Central chuyển yêu cầu qua USB Serial tới Backend.
+6. Backend xác minh cư dân và cấp ngăn: S ưu tiên L01, có thể dùng L02 nếu L01 không khả dụng; M chỉ L02. Loại ngăn offline, lỗi, đang dùng hoặc chưa xác định trạng thái. Reserve atomic để không cấp trùng.
+7. Backend lưu UNLOCK intent rồi gửi qua Central/ESP-NOW đến Node.
+8. Node điều khiển servo đúng ngăn, phản hồi kết quả.
+9. Shipper đặt kiện, đóng cửa và xác nhận tại kiosk.
+10. Node báo trạng thái MC-38 và chu kỳ cửa.
+11. Backend yêu cầu LOCK khi có confirmation và CLOSED hợp lệ; Node từ chối LOCK khi OPEN/UNKNOWN.
+12. Backend chỉ hoàn tất khi đủ bằng chứng hợp lệ, chuyển STORED/OCCUPIED.
+13. Cư dân có thể xem kiện trên Mobile App khi phần tích hợp được triển khai.
 
-Door OPEN/CLOSED/UNKNOWN độc lập với servo_action IDLE/UNLOCK_APPLIED/LOCK_APPLIED/ERROR/UNKNOWN. Không có latch_feedback. ACK ≠ actuation result, actuation result ≠ xác nhận cơ khí. Không LOCK khi cửa OPEN/UNKNOWN; sau reset/mất kết nối, giữ UNKNOWN/MAINTENANCE và reconcile thay vì mở lại hay giải phóng ngăn tự động. Không tự tạo tài khoản từ input shipper.
+## Nhận hàng — luồng mới Planned
 
-## Còn phải đo/chốt
+1. Cư dân đăng nhập Mobile App.
+2. Xem danh sách kiện của mình và chọn kiện cần nhận.
+3. App yêu cầu Backend cấp mã nhận hàng.
+4. Backend tạo **chuỗi 6 chữ số**, giữ số 0 đầu, TTL **30 giây**.
+5. App hiển thị mã và countdown; thời gian Backend quyết định hiệu lực.
+6. Cư dân nhập mã trên keypad kiosk; Central chuyển mã tới Backend qua USB Serial.
+7. Backend xác thực mã, quyền sở hữu, kiện, thời hạn và phạm vi kiosk được phép sử dụng; kiểm trạng thái ngăn/thiết bị.
+8. Nếu hợp lệ, Backend tiêu thụ mã một lần, tạo giao dịch PICKUP và lưu UNLOCK intent trong cùng transaction; gửi UNLOCK đúng ngăn.
+9. Cư dân lấy hàng, đóng cửa và xác nhận tại kiosk. Contract xác nhận kiosk gắn giao dịch và quyền tương ứng là công việc tiếp theo, không phải endpoint Phase 1 đã có.
+10. Node gửi trạng thái cửa/kết quả servo; Backend yêu cầu LOCK khi đủ điều kiện, hoàn tất và giải phóng ngăn khi đủ evidence.
 
-Góc servo, cơ cấu chốt, kích thước ngăn S/M, nguồn 5V–2A đủ tải hay không, chân Central SPI/keypad, độ trễ/debounce MC-38, schema Serial/ESP-NOW, timeout/dedup và khôi phục khi mất kết nối. Phần mở rộng 4 ngăn, cảm biến chốt, OTA, APK, webserver ESP32 sẽ xét sau.
+Mã dùng bộ sinh số ngẫu nhiên phù hợp bảo mật, không trùng giữa các phiên active trong cùng phạm vi xác thực; xử lý collision và cấp/tiêu thụ đồng thời ở Backend. Giới hạn số lần nhập sai và tốc độ thử tại kiosk; ngưỡng v2.1 chưa chốt. Không lưu plaintext lâu dài hoặc vào log/audit/telemetry; thiết kế verifier bảo vệ PIN ngắn phải được review. Mã hết hạn/đã dùng không được tái sử dụng. Backend mất phản hồi thì không mở; không TOTP offline. Retry không tiêu thụ mã hoặc tạo UNLOCK lần hai.
+
+## Evidence và giới hạn vật lý
+
+Door state OPEN/CLOSED/UNKNOWN độc lập với servo action IDLE/UNLOCK_APPLIED/LOCK_APPLIED/ERROR/UNKNOWN. ACK ≠ kết quả servo; LOCK_APPLIED ≠ chốt gài cơ khí. Không có latch_feedback hoặc phép đo hiện diện kiện.
+
+Hoàn tất cần confirmation + OPEN→CLOSED đúng transaction/boot/sequence + CLOSED còn mới + LOCK_APPLIED đúng command, không lỗi/offline/unknown. Phase 1 dùng freshness 10 giây; không tự áp thời gian đó làm mọi timeout transport. Lỗi/reboot/mất kết nối giữ reservation và yêu cầu reconcile; không tự AVAILABLE hoặc phát lại UNLOCK mù.
+
+## Hiện trạng
+
+Implemented: backend Phase 1, simulator localhost theo API cũ, Expo starter, helper MQTT và firmware test. Planned: PIN từ App nhập kiosk, API/contract mới, kiosk LVGL/keypad, servo controller và Gateway thật. Chưa có evidence nghiệm thu v2.1. [Pinout](../hardware/PINOUT.md), [interfaces](INTERFACES.md), [roadmap](ROADMAP.md), [test plan](TEST_PLAN.md).
