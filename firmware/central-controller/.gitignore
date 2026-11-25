@@ -1,0 +1,8 @@
+# PlatformIO build output and local reference/build logs
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Local editor and per-machine overrides
+.vscode/
+platformio.local.ini
